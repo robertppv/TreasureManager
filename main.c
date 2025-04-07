@@ -10,7 +10,13 @@
 #include <sys/stat.h>
 #include <time.h>
 
+
+#define PATH_LENGTH 256
+
+
 mode_t mode = S_IRWXO | S_IRWXG | S_IRWXU;
+
+
 
 typedef struct GPSCoordinates
 {
@@ -56,7 +62,7 @@ void add_to_log(char *huntId, char *msj)
         exit(-1);
     }
     int fd;
-    char path[1000] = "", msjj[3000] = "";
+    char path[PATH_LENGTH] = "", msjj[2*PATH_LENGTH] = "";
     sprintf(path, "./Game/%s/loggedhunt", huntId);
 
     if ((fd = open(path, O_WRONLY | O_APPEND)) < 0)
@@ -83,6 +89,7 @@ void add_to_log(char *huntId, char *msj)
         exit(-1);
     }
 }
+
 void print_treasure(treasure t)
 {
     printf("Treasure ID:%s\nUsername:%s\nLatitude:%.2f\nLongitude:%.2f\nClue Text:%s\nValue:%d\n\n", t.treasureId, t.userName, t.coordinates.latitude, t.coordinates.longitude, t.clueText, t.Value);
@@ -92,7 +99,7 @@ void add_treasure(char *huntId)
 {
     DIR *dirp = NULL;
     int fd;
-    char path[2000] = "", msj[2000] = "", lpath[2000] = "", treasureFile[1000] = "";
+    char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "", lpath[PATH_LENGTH] = "", treasureFile[PATH_LENGTH] = "";
     treasure tr;
 
     sprintf(path, "./Game/%s", huntId);
@@ -151,7 +158,7 @@ void add_treasure(char *huntId)
 
 void remove_treasure(char *huntId, char *treasureId)
 {
-    char path[1000] = "", msj[1000] = "", patht[1000] = "";
+    char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "", patht[2*PATH_LENGTH] = "";
     DIR *dir;
     int found = 0, fd, fdt, res;
     treasure t;
@@ -228,6 +235,57 @@ void remove_treasure(char *huntId, char *treasureId)
     add_to_log(huntId, msj);
 }
 
+remove_dir(DIR *d)
+{
+    struct dirent *dp;
+    while((dp=readdir(d))!=NULL)
+    {
+        if(dp->d_type== DT_DIR)
+        {
+             remove_hunt2(dp->d_name);
+             rmdir(path);
+        }
+        else
+        {
+             if(dp->d_type== DT_REG)
+             {
+                 sprintf(path, "./Game/%s/%s", huntId, dp->d_name);
+                 unlink(path);
+             }
+        }
+    }
+}
+void remove_hunt2(char *huntId)
+{
+    char path[2 * PATH_LENGTH] = "";
+    sprintf(path, "./Game/%s", huntId);
+    DIR *d;
+    if((d=opendir(path))==NULL)
+    {
+        perror("Error opening dir");
+        exit(-1);
+    }
+    struct dirent *dp;
+
+    while((dp=readdir(d))!=NULL)
+    {
+        if(dp->d_type== DT_DIR)
+        {
+            // remove_hunt2(dp->d_name);
+            // rmdir(path);
+        }
+        else
+        {
+             if(dp->d_type== DT_REG)
+             {
+                 sprintf(path, "./Game/%s/%s", huntId, dp->d_name);
+                 unlink(path);
+             }
+        }
+        
+    }
+}
+
 void remove_hunt(char *huntId)
 {
 
@@ -252,7 +310,7 @@ void list(char *huntId)
 {
     struct stat st;
     DIR *d;
-    char path[1000] = "", msj[1000] = "";
+    char path[PATH_LENGTH] = "", msj[PATH_LENGTH] = "";
     int fd, res = 0;
     treasure t;
 
@@ -306,7 +364,7 @@ void list(char *huntId)
 
 void view(char *huntId, char *treasureId)
 {
-    char path[1000] = "", msj[1000] = "";
+    char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "";
     DIR *dir;
     treasure tr;
     int found = 0, fd, res;
@@ -367,7 +425,6 @@ int main(int argc, char **argv)
         printf("Not enough arguments!\n");
         exit(-1);
     }
-    mkdir("./Game", mode);
     if (strcmp(argv[1], "--add") == 0)
     {
         if (argc <= 2)
@@ -417,7 +474,7 @@ int main(int argc, char **argv)
     {
         if (argc == 3)
         {
-            remove_hunt(argv[2]);
+            remove_hunt2(argv[2]);
         }
         else if (argc > 4)
         {
