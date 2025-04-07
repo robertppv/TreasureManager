@@ -89,15 +89,13 @@ void add_to_log(char *huntId, char *msj)
         exit(-1);
     }
 }
-
 void print_treasure(treasure t)
 {
     printf("Treasure ID:%s\nUsername:%s\nLatitude:%.2f\nLongitude:%.2f\nClue Text:%s\nValue:%d\n\n", t.treasureId, t.userName, t.coordinates.latitude, t.coordinates.longitude, t.clueText, t.Value);
 }
-
 void add_treasure(char *huntId)
 {
-    DIR *dirp = NULL;
+      DIR *dirp = NULL;
     int fd;
     char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "", lpath[PATH_LENGTH] = "", treasureFile[PATH_LENGTH] = "";
     treasure tr;
@@ -155,12 +153,11 @@ void add_treasure(char *huntId)
     sprintf(msj, "Treasure with id:%s was added.\n", tr.treasureId);
     add_to_log(huntId, msj);
 }
-
-void remove_treasure(char *huntId, char *treasureId)
+void remove_treasure(char *huntId,char *treasureId)
 {
-    char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "", patht[2*PATH_LENGTH] = "";
+    char path[2 * PATH_LENGTH] = "",msj[PATH_LENGTH]="";
     DIR *dir;
-    int found = 0, fd, fdt, res;
+    int fd,fdw,found=0,pos=0;
     treasure t;
     sprintf(path, "./Game/%s", huntId);
     if ((dir = opendir(path)) == NULL)
@@ -176,136 +173,118 @@ void remove_treasure(char *huntId, char *treasureId)
             exit(-1);
         }
     }
-
     sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId);
-    sprintf(patht, "./Game/%s/temp_treasures.dat", huntId);
-
-    if ((fd = open(path, O_RDONLY, mode)) == -1)
+    if((fd=open(path,O_RDWR))<0)
     {
-        perror("Error opening treasures file:remove_treasure");
-        exit(-1);
+         perror("Error opening treasures file:remove_treasure");
+         exit(-1);
     }
-
-    if ((fdt = open(patht, O_WRONLY | O_APPEND | O_CREAT, mode)) == -1)
-    {
-        perror("Error opening temp file:remove_treasure");
-        exit(-1);
-    }
-    while ((res = read(fd, &t, sizeof(treasure))) > 0)
+    
+    while(read(fd, &t, sizeof(treasure))>0)
     {
         if (strcmp(t.treasureId, treasureId) == 0)
         {
             found = 1;
-        }
-        else
-        {
-            if (write(fdt, &t, sizeof(treasure)) < 0)
-            {
-                perror("Error writing in temp file:remove_treasure");
-                exit(-1);
-            }
+            break;
+        }else{
+            pos++;
         }
     }
-    if (res < 0)
+    
+    if(found)
     {
-        perror("Error reading from treasures file:remove_treasure");
-        exit(-1);
+        fdw = open(path, O_WRONLY);
+        lseek(fdw, pos * sizeof(treasure), SEEK_SET);
+        
+        while (read(fd, &t, sizeof(treasure)) > 0)
+        {
+            if(write(fdw, &t, sizeof(treasure))<0)
+            {
+                perror("Error writing to treasures file");
+            }
+            pos++;
+        }
+        ftruncate(fdw, pos * sizeof(treasure));
+        if(close(fdw)==-1)
+        {
+            perror("Error closing treasures file:remove_treasure");
+            exit(-1);
+        }
+        sprintf(msj, "Treasure with id:%s was removed from hunt with id:%s", treasureId, huntId);
+        add_to_log(huntId, msj);
     }
-
-    if (close(fd) == -1)
+    else{
+        printf("Treasure with id:%s from hunt with id:%s not found.\n", treasureId, huntId);
+    }
+    if(close(fd)==-1)
     {
         perror("Error closing treasures file:remove_treasure");
         exit(-1);
     }
-    if (close(fdt) == -1)
-    {
-        perror("Error closing temp file:remove_treasure");
-    }
-    if (found == 0)
-    {
-        unlink(patht);
-        sprintf(msj, "Treasure with id:%s was not found in hunt with id:%s", treasureId, huntId);
-    }
-    else
-    {
-        unlink(path);
-        rename(patht, path);
-        sprintf(msj, "Treasure with id:%s was removed from hunt with id:%s", treasureId, huntId);
-    }
-    add_to_log(huntId, msj);
 }
-
-remove_dir(DIR *d)
+void remove_rec(char *path)
 {
     struct dirent *dp;
-    while((dp=readdir(d))!=NULL)
-    {
-        if(dp->d_type== DT_DIR)
-        {
-             remove_hunt2(dp->d_name);
-             rmdir(path);
-        }
-        else
-        {
-             if(dp->d_type== DT_REG)
-             {
-                 sprintf(path, "./Game/%s/%s", huntId, dp->d_name);
-                 unlink(path);
-             }
-        }
-    }
-}
-void remove_hunt2(char *huntId)
-{
-    char path[2 * PATH_LENGTH] = "";
-    sprintf(path, "./Game/%s", huntId);
+    char spath[5 * PATH_LENGTH];
     DIR *d;
-    if((d=opendir(path))==NULL)
+    
+
+    if ((d = opendir(path)) == NULL)
     {
-        perror("Error opening dir");
+         perror("Error finding hunt:remove_rec");
         exit(-1);
     }
-    struct dirent *dp;
 
-    while((dp=readdir(d))!=NULL)
+    while ((dp = readdir(d)) != NULL)
     {
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) 
+            continue;
+        sprintf(spath, "%s/%s", path, dp->d_name);
+
         if(dp->d_type== DT_DIR)
         {
-            // remove_hunt2(dp->d_name);
-            // rmdir(path);
+            remove_rec(spath);
+            unlink(spath);
         }
         else
         {
              if(dp->d_type== DT_REG)
              {
-                 sprintf(path, "./Game/%s/%s", huntId, dp->d_name);
-                 unlink(path);
+                 unlink(spath);
+             }
+             else{
+                 printf("Invalid file");
+                 exit(-1);
              }
         }
-        
     }
+    if (closedir(d) == -1)
+        {
+            perror("Error closing dir:remove_hunt2");
+            exit(-1);
+        }
+    rmdir(path);
 }
-
 void remove_hunt(char *huntId)
 {
 
-    char path[1000] = "", extcmd[2000] = "";
+    char path[1000] = "";
     sprintf(path, "./Game/%s", huntId);
-    sprintf(extcmd, "rm -rf %s/*", path);
-    system(extcmd); // stergem directorul recursiv
-
-    if (rmdir(path) == 0)
+    DIR *d;
+    if ((d = opendir(path)) == NULL)
     {
-        printf("Deleted\n");
-        sprintf(path, "./loggedhunt-%s", huntId);
-        unlink(path);
+         perror("Error finding hunt:remove_hunt");
     }
     else
     {
-        printf("Hunt not found\n");
+        remove_rec(path);
+        sprintf(path, "./loggedhunt-%s", huntId);
+        if(unlink(path)==-1)
+        {
+            perror("Error removing symlink");
+        }
     }
 }
-
 void list(char *huntId)
 {
     struct stat st;
@@ -335,7 +314,7 @@ void list(char *huntId)
         perror("Error using stat:list");
         exit(-1);
     }
-    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s\n", huntId, st.st_size, ctime(&st.st_mtime));
+    printf("Hunt Id:%s\nFile Size:%lld bytes\nLast modification:%s\n", huntId, st.st_size, ctime(&st.st_mtime));
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
         perror("Error opening treasures file:list");
@@ -361,7 +340,6 @@ void list(char *huntId)
     sprintf(msj, "Hunt with id:%s was listed.\n", huntId);
     add_to_log(huntId, msj);
 }
-
 void view(char *huntId, char *treasureId)
 {
     char path[2*PATH_LENGTH] = "", msj[PATH_LENGTH] = "";
@@ -425,6 +403,7 @@ int main(int argc, char **argv)
         printf("Not enough arguments!\n");
         exit(-1);
     }
+    mkdir("./Game",mode);
     if (strcmp(argv[1], "--add") == 0)
     {
         if (argc <= 2)
@@ -474,7 +453,7 @@ int main(int argc, char **argv)
     {
         if (argc == 3)
         {
-            remove_hunt2(argv[2]);
+            remove_hunt(argv[2]);
         }
         else if (argc > 4)
         {
@@ -490,6 +469,5 @@ int main(int argc, char **argv)
     {
         printf("Unknown command\n");
     }
-
     return 0;
 }
