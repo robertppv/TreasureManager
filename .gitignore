@@ -1,5 +1,8 @@
 treasure_manager
 
+.gitatrtributes
+main.dSYM
+.vscode
 
 # Prerequisites
 *.d
