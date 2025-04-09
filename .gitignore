@@ -1,8 +1,8 @@
-treasure_manager
+/treasure_manager
 
-.gitatrtributes
-main.dSYM
-.vscode
+/.gitatrtributes
+/main.dSYM
+/.vscode
 
 # Prerequisites
 *.d
