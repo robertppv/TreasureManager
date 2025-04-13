@@ -43,13 +43,13 @@ treasure getTreasureInfo()
         perror("Error reading Treasure Id");
         exit(-1);
     }
-    
+
     if (t.treasureId[strlen(t.treasureId) - 1] != '\n')
     {
         printf("Input too long for Treasure Id.");
         exit(-1);
     }
-    t.treasureId[strlen(t.treasureId) - 1] = '\0'; 
+    t.treasureId[strlen(t.treasureId) - 1] = '\0';
 
     printf("User name:");
     if (fgets(t.userName, DEFAULT_LENGTH, stdin) == NULL)
@@ -220,14 +220,14 @@ int hunt_exists(char *huntId)
 void add_treasure(char *huntId)
 {
     int fd;
-    char path[PATH_LENGTH] = "", msj[MSJ_LENGTH] = "", lpath[PATH_LENGTH] = "", treasureFile[PATH_LENGTH] = "";
+    char path[2 * PATH_LENGTH] = "", msj[MSJ_LENGTH] = "", lpath[PATH_LENGTH] = "", treasureFile[PATH_LENGTH] = "";
     treasure tr;
     tr = getTreasureInfo();
-    
-    if (hunt_exists(huntId)==0)
+
+    if (hunt_exists(huntId) == 0)
     {
         if (sprintf(path, "./Game/%s", huntId) < 0)
-        {   
+        {
             perror("Error making path:remove_treasure");
             exit(-1);
         }
@@ -251,7 +251,7 @@ void add_treasure(char *huntId)
             perror("Error closing log file:add_treasure");
             exit(-1);
         }
-        if (sprintf(msj, "Hunt with id:%s was added.\n", huntId) < 0)
+        if (sprintf(msj, "Hunt with id:%s was added.", huntId) < 0)
         {
             perror("Error making log message:add_treasure");
             exit(-1);
@@ -268,7 +268,7 @@ void add_treasure(char *huntId)
             exit(-1);
         }
     }
-    
+
     if (sprintf(treasureFile, "%s_treasures.dat", huntId) < 0)
     {
         perror("Error creating treasure file name:add_treasure");
@@ -285,7 +285,6 @@ void add_treasure(char *huntId)
         perror("Error opening treasures file:add_treasure");
         exit(-1);
     }
-
 
     if (write(fd, &tr, sizeof(treasure)) == -1)
     {
@@ -306,10 +305,10 @@ void add_treasure(char *huntId)
 }
 void remove_treasure(char *huntId, char *treasureId)
 {
-    char path[ PATH_LENGTH] = "", msj[MSJ_LENGTH] = "";
+    char path[PATH_LENGTH] = "", msj[MSJ_LENGTH] = "";
     int fd, fdw, found = 0, pos = 0, res;
     treasure t;
-    if(hunt_exists(huntId)==0)
+    if (hunt_exists(huntId) == 0)
     {
         printf("Hunt with id:%s not found\n", huntId);
         exit(-1);
@@ -394,7 +393,7 @@ void remove_treasure(char *huntId, char *treasureId)
 void remove_rec(char *path)
 {
     struct dirent *dp;
-    char spath[ PATH_LENGTH];
+    char spath[PATH_LENGTH];
     DIR *d;
     struct stat st;
 
@@ -458,11 +457,11 @@ void remove_rec(char *path)
 void remove_hunt(char *huntId)
 {
 
-    char path[ PATH_LENGTH] = "";
-    
-    if (hunt_exists(huntId)==0)
+    char path[PATH_LENGTH] = "";
+
+    if (hunt_exists(huntId) == 0)
     {
-        printf("Hunt with id:%s not found",huntId);
+        printf("Hunt with id:%s not found\n", huntId);
     }
     else
     {
@@ -491,9 +490,9 @@ void list(char *huntId)
     int fd, res = 0;
     treasure t;
 
-    if(hunt_exists(huntId)==0)
+    if (hunt_exists(huntId) == 0)
     {
-        printf("Hunt with id:%s not found",huntId);
+        printf("Hunt with id:%s not found\n", huntId);
         exit(-1);
     }
 
@@ -507,7 +506,7 @@ void list(char *huntId)
         perror("Error using stat:list");
         exit(-1);
     }
-    printf("Hunt Id:%s\nFile Size:%lld bytes\nLast modification:%s\n", huntId, st.st_size, ctime(&st.st_mtime));
+    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s\n", huntId, st.st_size, ctime(&st.st_mtime));
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
         perror("Error opening treasures file:list");
@@ -539,14 +538,14 @@ void list(char *huntId)
 }
 void view(char *huntId, char *treasureId)
 {
-    char path[ PATH_LENGTH] = "", msj[MSJ_LENGTH] = "";
+    char path[PATH_LENGTH] = "", msj[MSJ_LENGTH] = "";
 
     treasure tr;
     int found = 0, fd, res;
 
-    if(hunt_exists(huntId)==0)
+    if (hunt_exists(huntId) == 0)
     {
-        printf("Hunt with id:%s not found",huntId);
+        printf("Hunt with id:%s not found", huntId);
         exit(-1);
     }
     if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
@@ -567,7 +566,7 @@ void view(char *huntId, char *treasureId)
         {
             print_treasure(tr);
             found = 1;
-            if (sprintf(msj, "Treasure with id:%s from hunt with id:%s was viewed.\n", treasureId, huntId) < 0)
+            if (sprintf(msj, "Treasure with id:%s from hunt with id:%s was viewed.", treasureId, huntId) < 0)
             {
                 perror("Error making log message:view");
                 exit(-1);
@@ -593,78 +592,76 @@ void view(char *huntId, char *treasureId)
 }
 
 int main(int argc, char **argv)
-{ 
-     if (argc == 1)
-     {
-         printf("Not enough arguments!\n");
-         exit(-1);
-     }
-     mkdir("./Game", mode);
-     if (strcmp(argv[1], "--add") == 0)
-     {
-         if (argc <= 2)
-         {
-             printf("Not enough arguments!\n");
-         }
-         else if (argc > 3)
-         {
-             printf("To many arguments!\n");
-         }
-         else
-         {
-             add_treasure(argv[2]);
-         }
-     }
-     else if (strcmp(argv[1], "--list") == 0)
-     {
-         if (argc > 3)
-         {
-             printf("To many arguments!\n");
-         }
-         else if (argc < 3)
-         {
-             printf("Not enough arguments!\n");
-         }
-         else
-         {
-             list(argv[2]);
-         }
-     }
-     else if (strcmp(argv[1], "--view") == 0)
-     {
-         if (argc < 4)
-         {
-             printf("Not enough arguments!\n");
-         }
-         else if (argc > 4)
-         {
-             printf("To many arguments!\n");
-         }
-         else
-         {
-             view(argv[2], argv[3]);
-         }
-     }
-     else if (strcmp(argv[1], "--remove") == 0)
-     {
-         if (argc == 3)
-         {
-             remove_hunt(argv[2]);
-         }
-         else if (argc > 4)
-         {
-             printf("To many arguments!\n");
-             exit(-1);
-         }
-         else
-         {
-             remove_treasure(argv[2], argv[3]);
-         }
-     }
-     else
-     {
-         printf("Unknown command\n");
-     }
-         
-   
+{
+    if (argc == 1)
+    {
+        printf("Not enough arguments!\n");
+        exit(-1);
+    }
+    mkdir("./Game", mode);
+    if (strcmp(argv[1], "--add") == 0)
+    {
+        if (argc <= 2)
+        {
+            printf("Not enough arguments!\n");
+        }
+        else if (argc > 3)
+        {
+            printf("To many arguments!\n");
+        }
+        else
+        {
+            add_treasure(argv[2]);
+        }
+    }
+    else if (strcmp(argv[1], "--list") == 0)
+    {
+        if (argc > 3)
+        {
+            printf("To many arguments!\n");
+        }
+        else if (argc < 3)
+        {
+            printf("Not enough arguments!\n");
+        }
+        else
+        {
+            list(argv[2]);
+        }
+    }
+    else if (strcmp(argv[1], "--view") == 0)
+    {
+        if (argc < 4)
+        {
+            printf("Not enough arguments!\n");
+        }
+        else if (argc > 4)
+        {
+            printf("To many arguments!\n");
+        }
+        else
+        {
+            view(argv[2], argv[3]);
+        }
+    }
+    else if (strcmp(argv[1], "--remove") == 0)
+    {
+        if (argc == 3)
+        {
+            remove_hunt(argv[2]);
+        }
+        else if (argc > 4)
+        {
+            printf("To many arguments!\n");
+            exit(-1);
+        }
+        else
+        {
+            remove_treasure(argv[2], argv[3]);
+        }
+    }
+    else
+    {
+        printf("Unknown command\n");
+    }
 }
