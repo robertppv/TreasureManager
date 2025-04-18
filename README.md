@@ -6,9 +6,9 @@ OS Project Phase 1
 
 
 ## How to run
-To make the program
+To compile the program
 ```c
-gcc -o treasure_manager main.c
+gcc -o treasure_manager treasure_manager.c
 ```
 To add a treasure 
 ```c

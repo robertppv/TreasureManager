@@ -495,6 +495,7 @@ void list(char *huntId)
         printf("Hunt with id:%s not found\n", huntId);
         exit(-1);
     }
+    
 
     if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
     {
