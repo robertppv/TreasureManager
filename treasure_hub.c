@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 int monitor_running = 0;
 pid_t monitor_pid;
 
@@ -15,10 +16,13 @@ void list_hunts(int sig)
 
 void list_treasures(int sig)
 {
-    printf("SIGUSR2 received: Executing list_treasures\n");
+    printf("\n");
+    system("./treasure_manager --list hunt1 ");
 }
+
 void view_treasure(int sig)
 {
+    printf("\n");
     printf("SIGUSR2 received: Executing list_treasures\n");
 }
 
@@ -40,13 +44,13 @@ void end_monitor_process(int sig)
 {
     exit(0);
 }
+
 void monitor_procces()
 {
 
     struct sigaction monitor_actions;
     memset(&monitor_actions, 0x00, sizeof(struct sigaction));
-    printf("child process started\n");
-
+    printf("Monitor procces started\n");
     monitor_actions.sa_handler = list_treasures;
     if (sigaction(SIGUSR2, &monitor_actions, NULL) < 0)
     {
@@ -84,12 +88,14 @@ void monitor_procces()
 int main(void)
 {
 
-    char comand[100] = "";
+    char command[100] = "";
 
     while (1)
     {
-        scanf("%s", comand);
-        if (strcmp(comand, "sm") == 0)
+        printf("Start monitor\nList hunts\nList treasures\nView treasures\nStop monitor\nExit\nSelect a command:");
+        scanf("%s", command);
+
+        if (strcmp(command, "sm") == 0)
         {
             if (monitor_running == 1)
             {
@@ -110,11 +116,13 @@ int main(void)
                 }
                 else
                 {
+                    sleep(1);
+                    printf("\n");
                     continue;
                 }
             }
         }
-        else if (strcmp(comand, "list_hunt") == 0)
+        else if (strcmp(command, "list_hunt") == 0)
         {
             if (monitor_running == 0)
             {
@@ -130,7 +138,7 @@ int main(void)
                 }
             }
         }
-        else if (strcmp(comand, "ls") == 0)
+        else if (strcmp(command, "ls") == 0)
         {
             if (monitor_running == 0)
             {
@@ -144,9 +152,10 @@ int main(void)
                     printf("Error sending SIGUSR to child\n");
                     exit(2);
                 }
+                sleep(1);
             }
         }
-        else if (strcmp(comand, "vt") == 0)
+        else if (strcmp(command, "vt") == 0)
         {
             if (monitor_running == 0)
             {
@@ -160,9 +169,10 @@ int main(void)
                     printf("Error sending SIGILL to child\n");
                     exit(2);
                 }
+                sleep(1);
             }
         }
-        else if (strcmp(comand, "stm") == 0)
+        else if (strcmp(command, "stm") == 0)
         {
             if (monitor_running == 0)
             {
@@ -174,7 +184,7 @@ int main(void)
                 monitor_running = 0;
             }
         }
-        else if (strcmp(comand, "exit") == 0)
+        else if (strcmp(command, "exit") == 0)
         {
             if (monitor_running == 1)
             {
@@ -185,5 +195,10 @@ int main(void)
                 exit(0);
             }
         }
+        else
+        {
+            printf("Invalid command");
+        }
+        printf("\n");
     }
 }
