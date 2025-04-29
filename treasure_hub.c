@@ -7,8 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
 int monitor_running = 0;
 pid_t monitor_pid;
+mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // Set file permissions
 
 void list_hunts(int sig)
 {
@@ -16,8 +18,27 @@ void list_hunts(int sig)
 
 void list_treasures(int sig)
 {
-    printf("\n");
-    system("./treasure_manager --list hunt1 ");
+    int fd;
+    char huntID[128] = "";
+    char command[255] = "";
+
+    if ((fd = open("./commands.txt", O_RDONLY)) < 0)
+    {
+        perror("Error opening treasures file:add_treasure");
+        exit(-1);
+    }
+
+    if (read(fd, huntID, strlen(huntID)) < 0)
+    {
+        perror("error reading");
+    }
+
+    printf("%s--------------------------\n", huntID);
+    
+    if (close(fd) < 0)
+    {
+        perror("Error closing file");
+    }
 }
 
 void view_treasure(int sig)
@@ -89,7 +110,9 @@ int main(void)
 {
 
     char command[100] = "";
-
+    char huntID[128] = "";
+    int fd;
+    char treasureID[128] = "";
     while (1)
     {
         printf("Start monitor\nList hunts\nList treasures\nView treasures\nStop monitor\nExit\nSelect a command:");
@@ -122,7 +145,7 @@ int main(void)
                 }
             }
         }
-        else if (strcmp(command, "list_hunt") == 0)
+        else if (strcmp(command, "ls") == 0)
         {
             if (monitor_running == 0)
             {
@@ -130,12 +153,29 @@ int main(void)
             }
             else
             {
+                printf("HuntID:");
+                scanf("%s", huntID);
 
-                if (kill(monitor_pid, SIGUSR1) < 0)
+                if ((fd = open("./commands.txt", O_WRONLY | O_CREAT, mode)) == -1)
+                {
+                    perror("Error opening treasures file:add_treasure");
+                    exit(-1);
+                }
+                if (write(fd, huntID, strlen(huntID)) < 0)
+                {
+                    perror("Error writing in file");
+                }
+                if (close(fd) < 0)
+                {
+                    perror("Error closing the file");
+                }
+                if (kill(monitor_pid, SIGUSR2) < 0)
                 {
                     printf("Error sending SIGUSR to child\n");
                     exit(2);
                 }
+                sleep(1);
+                
             }
         }
         else if (strcmp(command, "ls") == 0)
