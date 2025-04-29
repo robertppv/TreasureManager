@@ -470,6 +470,7 @@ void remove_hunt(char *huntId)
             perror("Error making path:list");
             exit(-1);
         }
+
         remove_rec(path);
         if (sprintf(path, "./loggedhunt-%s", huntId) < 0)
         {
@@ -495,7 +496,6 @@ void list(char *huntId)
         printf("Hunt with id:%s not found\n", huntId);
         exit(-1);
     }
-    
 
     if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
     {
@@ -537,6 +537,90 @@ void list(char *huntId)
     }
     add_to_log(huntId, msj);
 }
+
+int number_of_treasures(char *huntId)
+{
+
+    char path[PATH_LENGTH] = "";
+    int fd, res = 0, count = 0;
+    treasure t;
+
+    if (hunt_exists(huntId) == 0)
+    {
+        printf("Hunt with id:%s not found\n", huntId);
+        exit(-1);
+    }
+
+    if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
+    {
+        perror("Error making treasure file path:list");
+        exit(-1);
+    }
+
+    if ((fd = open(path, O_RDONLY, mode)) < 0)
+    {
+        perror("Error opening treasures file:list");
+        exit(-1);
+    }
+
+    while ((res = read(fd, &t, sizeof(treasure))) > 0)
+    {
+        count++;
+    }
+
+    if (res < 0)
+    {
+        perror("Error reading from treasures file:list");
+        exit(-1);
+    }
+
+    if (close(fd) == -1)
+    {
+        perror("Error closing treasures file:list");
+        exit(-1);
+    }
+
+    return count;
+}
+
+void list_hunts()
+{
+    char path[PATH_LENGTH] = "";
+    struct dirent *dp;
+    char spath[PATH_LENGTH];
+    DIR *d;
+    struct stat st;
+
+    if ((d = opendir(path)) == NULL)
+    {
+        perror("Error finding hunt:remove_rec");
+        exit(-1);
+    }
+
+    if (sprintf(path, "./Game") < 0)
+    {
+        perror("Error making path:list");
+        exit(-1);
+    }
+    if ((d = opendir(path)) == NULL)
+    {
+        perror("Error finding hunt:remove_rec");
+        exit(-1);
+    }
+
+    while ((dp = readdir(d)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
+            continue;
+
+        printf("HuntID:%s\nNumber of treasures:%d\n", dp->d_name, number_of_treasures(dp->d_name));
+    }
+    if (closedir(d) == -1)
+    {
+        perror("Error closing dir:remove_rec");
+        exit(-1);
+    }
+}
 void view(char *huntId, char *treasureId)
 {
     char path[PATH_LENGTH] = "", msj[MSJ_LENGTH] = "";
@@ -546,7 +630,7 @@ void view(char *huntId, char *treasureId)
 
     if (hunt_exists(huntId) == 0)
     {
-        printf("Hunt with id:%s not found", huntId);
+        printf("Hunt with id:%s not found\n", huntId);
         exit(-1);
     }
     if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
