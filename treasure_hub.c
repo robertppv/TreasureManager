@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <errno.h>
 int monitor_running = 0;
 int monitor_stopping = 0;
 pid_t monitor_pid;
@@ -90,21 +91,9 @@ void view_treasure(int sig)
     fork_exec(args);
 }
 
-void stop_monitor()
-{
-    int status;
-
-    if (kill(monitor_pid, SIGTERM) < 0)
-    {
-        printf("Error sending SIGTERM to child\n");
-        exit(2);
-    }
-    waitpid(monitor_pid, &status, 0);
-    printf("Monitor procces ended with code %d\n", WEXITSTATUS(status));
-}
-
 void end_monitor_process(int sig)
 {
+    usleep(5000000);
     exit(EXIT_SUCCESS);
 }
 
@@ -150,14 +139,46 @@ void monitor_procces()
 
 void monitor_ended(int sig)
 {
-    monitor_running = 0;
-    monitor_stopping = 0;
+    int status;
+    pid_t ended_pid;
+
+    while ((ended_pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
+        if (ended_pid == monitor_pid)
+        {
+            printf("\n\nMonitor process has stopped");
+            if (WIFEXITED(status))
+            {
+                printf(" with exit code %d.\n", WEXITSTATUS(status));
+            }
+            else if (WIFSIGNALED(status))
+            {
+                printf(" due to signal %d.\n", WTERMSIG(status));
+            }
+            else
+            {
+                printf(" with an unknown status.\n");
+            }
+
+            // Reset monitor state variables
+            monitor_running = 0;
+            monitor_stopping = 0;
+            monitor_pid = 0; // Important to reset PID
+        }
+    }
+
+    // Check for errors with waitpid itself, though often ignored in simple handlers
+    if (ended_pid == -1 && errno != ECHILD)
+    {
+        perror("waitpid error in monitor_ended");
+    }
 }
+
 int main(void)
 {
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
-    char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "", command[100] = "";
+    char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
     int fd;
     parent_actions.sa_handler = monitor_ended;
     if (sigaction(SIGCHLD, &parent_actions, NULL) < 0)
@@ -165,19 +186,21 @@ int main(void)
         perror("Process a SIGCHLD sigaction");
         exit(-1);
     }
+
     while (1)
     {
         printf("Start monitor:sm\nList hunts:lh\nList treasures:lt\nView treasures:vt\nStop monitor:stm\nExit\nSelect a command:");
+        char command[100] = "";
         scanf("%s", command);
         printf("\n");
-
+        if (monitor_stopping == 1)
+        {
+            printf("Monitor procces is currently stopping. Can't accept any commands\n\n");
+            continue;
+        }
         if (strcmp(command, "sm") == 0)
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any commands\n");
-            }
-            else if (monitor_running == 1)
+            if (monitor_running == 1)
             {
                 printf("Monitor is curently running\n");
             }
@@ -217,11 +240,7 @@ int main(void)
         }
         else if (strcmp(command, "lt") == 0)
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else if (monitor_running == 0)
+            if (monitor_running == 0)
             {
                 printf("Start monitor before executing list_hunt command\n");
             }
@@ -254,11 +273,7 @@ int main(void)
         }
         else if (strcmp(command, "lh") == 0)
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else if (monitor_running == 0)
+            if (monitor_running == 0)
             {
                 printf("Start monitor before executing list_treasures command\n");
             }
@@ -276,11 +291,7 @@ int main(void)
         else if (strcmp(command, "vt") == 0)
         {
 
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else if (monitor_running == 0)
+            if (monitor_running == 0)
             {
                 printf("Start monitor before executing view_treasure command\n");
             }
@@ -290,9 +301,9 @@ int main(void)
                 scanf("%s", huntID);
                 printf("TreasureID:");
                 scanf("%s", treasureID);
-                printf("\n");
+                
 
-                if ((fd = open("./commands.txt", O_WRONLY|O_TRUNC, mode)) == -1)
+                if ((fd = open("./commands.txt", O_WRONLY | O_TRUNC, mode)) == -1)
                 {
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
@@ -320,27 +331,41 @@ int main(void)
         }
         else if (strcmp(command, "stm") == 0)
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else if (monitor_running == 0)
+            if (monitor_running == 0)
             {
                 printf("Monitor is not currently running\n");
             }
             else
             {
+                int stop_pid;
                 monitor_stopping = 1;
-                stop_monitor();
+                if ((stop_pid = fork()) < 0)
+                {
+                    perror("");
+                }
+                else if (stop_pid == 0)
+                {
+                    if (kill(monitor_pid, SIGTERM) < 0)
+                    {
+                        perror("Error sending SIGTERM to monitor process");
+                        // Exit child with error if kill fails
+                        exit(2);
+                    }
+                    exit(0);
+                }
+                else
+                {
+                    printf("Monitor is stopping\n\n");
+                    int status;
+                    waitpid(stop_pid, &status, 0);
+                    monitor_stopping = 1;
+                    continue;
+                }
             }
         }
         else if (strcmp(command, "exit") == 0)
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else if (monitor_running == 1)
+            if (monitor_running == 1)
             {
                 printf("Monitor running, please close monitor before exiting.\n ");
             }
@@ -349,14 +374,14 @@ int main(void)
                 exit(0);
             }
         }
+        else if (strcmp(command, "") == 0)
+        {
+            continue;
+        }
         else
         {
-            if (monitor_stopping == 1)
-            {
-                printf("Monitor procces is currently stopping. Can't accept any command\n");
-            }
-            else
-                printf("Invalid command---%s\n", command);
+
+            printf("Invalid command---%s\n", command);
         }
         printf("\n");
     }

@@ -46,6 +46,12 @@ To compile the program
 ```c
 gcc -o treasure_hub treasure_hub.c
 ```
+To start the program
+```c
+./treasure_hub
+```
+
+
 
 
 

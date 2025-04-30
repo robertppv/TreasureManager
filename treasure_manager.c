@@ -192,7 +192,7 @@ void add_to_log(char *huntId, char *msj)
 }
 void print_treasure(treasure t)
 {
-    printf("Treasure ID:%s\nUsername:%s\nLatitude:%.2f\nLongitude:%.2f\nClue Text:%s\nValue:%d\n\n", t.treasureId, t.userName, t.coordinates.latitude, t.coordinates.longitude, t.clueText, t.Value);
+    printf("\nTreasure ID:%s\nUsername:%s\nLatitude:%.2f\nLongitude:%.2f\nClue Text:%s\nValue:%d\n", t.treasureId, t.userName, t.coordinates.latitude, t.coordinates.longitude, t.clueText, t.Value);
 }
 int hunt_exists(char *huntId)
 {
@@ -507,7 +507,7 @@ void list(char *huntId)
         perror("Error using stat:list");
         exit(-1);
     }
-    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s\n", huntId, st.st_size, ctime(&st.st_mtime));
+    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s", huntId, st.st_size, ctime(&st.st_mtime));
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
         perror("Error opening treasures file:list");
@@ -553,13 +553,13 @@ int number_of_treasures(char *huntId)
 
     if (sprintf(path, "./Game/%s/%s_treasures.dat", huntId, huntId) < 0)
     {
-        perror("Error making treasure file path:list");
+        perror("Error making treasure file path:number_of_treasures");
         exit(-1);
     }
 
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
-        perror("Error opening treasures file:list");
+        perror("Error opening treasures file:number_of_treasures");
         exit(-1);
     }
 
@@ -570,13 +570,13 @@ int number_of_treasures(char *huntId)
 
     if (res < 0)
     {
-        perror("Error reading from treasures file:list");
+        perror("Error reading from treasures file:number_of_treasures");
         exit(-1);
     }
 
     if (close(fd) == -1)
     {
-        perror("Error closing treasures file:list");
+        perror("Error closing treasures file:number_of_treasures");
         exit(-1);
     }
 
@@ -600,7 +600,7 @@ void list_hunts()
         if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
             continue;
 
-        printf("HuntID:%s\nNumber of treasures:%d\n\n", dp->d_name, number_of_treasures(dp->d_name));
+        printf("HuntID:%s\nNumber of treasures:%d\n", dp->d_name, number_of_treasures(dp->d_name));
     }
     if (closedir(d) == -1)
     {
@@ -659,7 +659,7 @@ void view(char *huntId, char *treasureId)
     }
     if (found == 0)
     {
-        printf("Treasure with id:%s not found.\n", treasureId);
+        printf("\nTreasure with id:%s not found.\n", treasureId);
     }
 }
 
