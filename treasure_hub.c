@@ -1,4 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -38,7 +37,6 @@ void list_hunts(int sig)
     char *args[] = {"./treasure_manager", "--list_hunts", NULL};
     fork_exec(args);
 }
-
 void list_treasures(int sig)
 {
     int fd;
@@ -174,8 +172,9 @@ void monitor_ended(int sig)
     }
 }
 
-int main(void)
+int main()
 {
+
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
     char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
@@ -222,7 +221,7 @@ int main(void)
                 monitor_running = 1;
                 if ((monitor_pid = fork()) < 0)
                 {
-                    printf("Error creating child process\n");
+                    perror("Error creating child process\n");
                     exit(1);
                 }
                 if (monitor_pid == 0)
@@ -301,7 +300,6 @@ int main(void)
                 scanf("%s", huntID);
                 printf("TreasureID:");
                 scanf("%s", treasureID);
-                
 
                 if ((fd = open("./commands.txt", O_WRONLY | O_TRUNC, mode)) == -1)
                 {
