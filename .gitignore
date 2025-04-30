@@ -6,6 +6,7 @@ commands.txt
 /main.dSYM
 /.vscode
 /.gitattributes
+Game/
 # Prerequisites
 *.d
 
