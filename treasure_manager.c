@@ -585,26 +585,13 @@ int number_of_treasures(char *huntId)
 
 void list_hunts()
 {
-    char path[PATH_LENGTH] = "";
+
     struct dirent *dp;
-    char spath[PATH_LENGTH];
     DIR *d;
-    struct stat st;
 
-    if ((d = opendir(path)) == NULL)
+    if ((d = opendir("./Game")) == NULL)
     {
-        perror("Error finding hunt:remove_rec");
-        exit(-1);
-    }
-
-    if (sprintf(path, "./Game") < 0)
-    {
-        perror("Error making path:list");
-        exit(-1);
-    }
-    if ((d = opendir(path)) == NULL)
-    {
-        perror("Error finding hunt:remove_rec");
+        perror("Error opening game directory:list_hunts");
         exit(-1);
     }
 
@@ -613,7 +600,7 @@ void list_hunts()
         if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
             continue;
 
-        printf("HuntID:%s\nNumber of treasures:%d\n", dp->d_name, number_of_treasures(dp->d_name));
+        printf("HuntID:%s\nNumber of treasures:%d\n\n", dp->d_name, number_of_treasures(dp->d_name));
     }
     if (closedir(d) == -1)
     {
@@ -744,6 +731,10 @@ int main(int argc, char **argv)
         {
             remove_treasure(argv[2], argv[3]);
         }
+    }
+    else if (strcmp(argv[1], "--list_hunts") == 0)
+    {
+        list_hunts();
     }
     else
     {

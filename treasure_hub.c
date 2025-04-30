@@ -34,6 +34,8 @@ void fork_exec(char **args)
 }
 void list_hunts(int sig)
 {
+    char *args[] = {"./treasure_manager", "--list_hunts", NULL};
+    fork_exec(args);
 }
 
 void list_treasures(int sig)
@@ -97,13 +99,12 @@ void stop_monitor()
         printf("Error sending SIGTERM to child\n");
         exit(2);
     }
-    waitpid(monitor_pid,&status,0);
+    waitpid(monitor_pid, &status, 0);
     printf("Monitor procces ended with code %d\n", WEXITSTATUS(status));
 }
 
 void end_monitor_process(int sig)
 {
-    usleep(5000000);
     exit(EXIT_SUCCESS);
 }
 
@@ -168,6 +169,7 @@ int main(void)
     {
         printf("Start monitor:sm\nList hunts:lh\nList treasures:lt\nView treasures:vt\nStop monitor:stm\nExit\nSelect a command:");
         scanf("%s", command);
+        printf("\n");
 
         if (strcmp(command, "sm") == 0)
         {
@@ -183,6 +185,16 @@ int main(void)
             {
                 char *args[] = {"gcc", "-o", "treasure_manager", "./treasure_manager.c", NULL};
                 fork_exec(args);
+                if ((fd = open("./commands.txt", O_CREAT, mode)) < 0)
+                {
+                    perror("Error creating commands file");
+                    exit(-1);
+                }
+                if (close(fd) == -1)
+                {
+                    perror("Error closing commands file");
+                    exit(-1);
+                }
                 monitor_stopping = 0;
                 monitor_running = 1;
                 if ((monitor_pid = fork()) < 0)
@@ -219,7 +231,7 @@ int main(void)
                 scanf("%s", huntID);
                 printf("\n");
 
-                if ((fd = open("./commands.txt", O_WRONLY | O_CREAT, mode)) == -1)
+                if ((fd = open("./commands.txt", O_WRONLY | O_TRUNC, mode)) == -1)
                 {
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
@@ -280,7 +292,7 @@ int main(void)
                 scanf("%s", treasureID);
                 printf("\n");
 
-                if ((fd = open("./commands.txt", O_WRONLY | O_CREAT, mode)) == -1)
+                if ((fd = open("./commands.txt", O_WRONLY|O_TRUNC, mode)) == -1)
                 {
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
@@ -344,7 +356,7 @@ int main(void)
                 printf("Monitor procces is currently stopping. Can't accept any command\n");
             }
             else
-                printf("Invalid command---%s\n",command);
+                printf("Invalid command---%s\n", command);
         }
         printf("\n");
     }

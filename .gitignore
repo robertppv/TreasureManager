@@ -1,6 +1,8 @@
 /treasure_manager
+/treasure_hub
 /.DS_Store
-
+loggedhunt-*
+/commands.txt
 /main.dSYM
 /.vscode
 /.gitattributes

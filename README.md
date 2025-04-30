@@ -30,6 +30,31 @@ To remove a treasure from a hunt
 ```c
 ./treasure_manager --remove <huntId> <treasureId>
 ```
+To list all hunts and number of treasures
+```c
+./treasure_manager --list_hunts
+```
+
+# Treasure Hub
+
+OS Project Phase 2
+
+
+
+## How to run
+To compile the program
+```c
+gcc -o treasure_hub treasure_hub.c
+```
+
+
+
+
+
+
+
+
+
 
 
     
