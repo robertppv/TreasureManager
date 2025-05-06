@@ -32,93 +32,89 @@ void fork_exec(char **args)
         waitpid(exec_pid, &status, 0);
     }
 }
-void list_hunts(int sig)
+void list_hunts()
 {
     char *args[] = {"./treasure_manager", "--list_hunts", NULL};
     fork_exec(args);
 }
-void list_treasures(int sig)
+void list_treasures(char *huntID)
 {
-    int fd;
-    char huntID[DEFAULT_LENGTH] = "";
-
-    if ((fd = open("./commands.txt", O_RDONLY)) < 0)
-    {
-        perror("Error opening treasures file:add_treasure");
-        exit(-1);
-    }
-
-    if (read(fd, huntID, DEFAULT_LENGTH) < 0)
-    {
-        perror("error reading");
-    }
-    if (close(fd) < 0)
-    {
-        perror("Error closing file");
-    }
-
     char *args[] = {"./treasure_manager", "--list", huntID, NULL};
     fork_exec(args);
 }
-void view_treasure(int sig)
+void view_treasure(char *huntID, char *treasureID)
 {
-    int fd;
-    char huntID[DEFAULT_LENGTH] = "";
-    char treasureID[DEFAULT_LENGTH] = "";
-
-    if ((fd = open("./commands.txt", O_RDONLY)) < 0)
-    {
-        perror("Error opening treasures file:add_treasure");
-        exit(-1);
-    }
-
-    if (read(fd, huntID, DEFAULT_LENGTH) < 0)
-    {
-        perror("error reading");
-    }
-    if (read(fd, treasureID, DEFAULT_LENGTH) < 0)
-    {
-        perror("error reading");
-    }
-    if (close(fd) < 0)
-    {
-        perror("Error closing file");
-    }
-
     char *args[] = {"./treasure_manager", "--view", huntID, treasureID, NULL};
     fork_exec(args);
 }
-
 void end_monitor_process(int sig)
 {
     usleep(5000000);
     exit(EXIT_SUCCESS);
 }
+void handle_commands(int sig)
+{
+    char command[10];
+    char huntID[DEFAULT_LENGTH] = "";
+    char treasureID[DEFAULT_LENGTH] = "";
+    int fd;
 
+    if ((fd = open("./commands.txt", O_RDONLY)) < 0)
+    {
+        perror("Error opening treasures file:add_treasure");
+        exit(-1);
+    }
+
+    if (read(fd, command, 10) < 0)
+    {
+        perror("error reading");
+    }
+
+    if (strcmp(command, "1") == 0)
+    {
+        if (read(fd, huntID, DEFAULT_LENGTH) < 0)
+        {
+            perror("error reading");
+        }
+        list_treasures(huntID);
+    }
+    else if (strcmp(command, "3") == 0)
+    {
+        if (read(fd, huntID, DEFAULT_LENGTH) < 0)
+        {
+            perror("error reading");
+        }
+        if (read(fd, treasureID, DEFAULT_LENGTH) < 0)
+        {
+            perror("error reading");
+        }
+        view_treasure(huntID, treasureID);
+    }
+    else if (strcmp(command, "2") == 0)
+    {
+        list_hunts();
+    }
+    else
+    {
+        printf("Invalid command\n");
+    }
+
+    if (close(fd) < 0)
+    {
+        perror("Error closing file");
+    }
+}
 void monitor_procces()
 {
 
     struct sigaction monitor_actions;
     memset(&monitor_actions, 0x00, sizeof(struct sigaction));
     printf("Monitor procces started\n");
-    monitor_actions.sa_handler = list_treasures;
-    if (sigaction(SIGUSR2, &monitor_actions, NULL) < 0)
-    {
-        perror("Process a SIGUSR2 sigaction");
-        exit(-1);
-    }
 
-    monitor_actions.sa_handler = list_hunts;
+    monitor_actions.sa_handler = handle_commands;
     if (sigaction(SIGUSR1, &monitor_actions, NULL) < 0)
     {
         perror("Process a SIGUSR1 sigaction");
-        exit(-1);
-    }
-
-    monitor_actions.sa_handler = view_treasure;
-    if (sigaction(SIGILL, &monitor_actions, NULL) < 0)
-    {
-        perror("Process a SIGILL sigaction");
         exit(-1);
     }
 
@@ -222,7 +218,7 @@ int main()
                 if ((monitor_pid = fork()) < 0)
                 {
                     perror("Error creating child process\n");
-                    exit(1);
+                    exit(-1);
                 }
                 if (monitor_pid == 0)
                 {
@@ -254,6 +250,10 @@ int main()
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
                 }
+                if (write(fd, "1", 10) < 0)
+                {
+                    perror("Error writing in file");
+                }
                 if (write(fd, huntID, strlen(huntID)) < 0)
                 {
                     perror("Error writing in file");
@@ -262,7 +262,7 @@ int main()
                 {
                     perror("Error closing the file");
                 }
-                if (kill(monitor_pid, SIGUSR2) < 0)
+                if (kill(monitor_pid, SIGUSR1) < 0)
                 {
                     printf("Error sending SIGUSR to child\n");
                     exit(2);
@@ -274,11 +274,23 @@ int main()
         {
             if (monitor_running == 0)
             {
-                printf("Start monitor before executing list_treasures command\n");
+                printf("Start monitor before executing list_hunts command\n");
             }
             else
             {
-
+                if ((fd = open("./commands.txt", O_WRONLY | O_TRUNC, mode)) == -1)
+                {
+                    perror("Error opening treasures file:add_treasure");
+                    exit(-1);
+                }
+                if (write(fd, "2", 10) < 0)
+                {
+                    perror("Error writing in file");
+                }
+                if (close(fd) < 0)
+                {
+                    perror("Error closing the file");
+                }
                 if (kill(monitor_pid, SIGUSR1) < 0)
                 {
                     printf("Error sending SIGUSR1 to child\n");
@@ -306,6 +318,10 @@ int main()
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
                 }
+                if (write(fd, "3", 10) < 0)
+                {
+                    perror("Error writing in file");
+                }
                 if (write(fd, huntID, DEFAULT_LENGTH) < 0)
                 {
                     perror("Error writing in file");
@@ -319,7 +335,7 @@ int main()
                     perror("Error closing the file");
                 }
 
-                if (kill(monitor_pid, SIGILL) < 0)
+                if (kill(monitor_pid, SIGUSR1) < 0)
                 {
                     printf("Error sending SIGILL to child\n");
                     exit(2);
