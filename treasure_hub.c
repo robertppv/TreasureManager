@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -8,8 +9,10 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 int monitor_running = 0;
 int monitor_stopping = 0;
+int pipefd[2];
 pid_t monitor_pid;
 mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 #define DEFAULT_LENGTH 32
@@ -24,6 +27,7 @@ void fork_exec(char **args)
     }
     if (exec_pid == 0)
     {
+
         execvp(args[0], args);
     }
     else
@@ -45,6 +49,7 @@ void list_treasures(char *huntID)
 void view_treasure(char *huntID, char *treasureID)
 {
     char *args[] = {"./treasure_manager", "--view", huntID, treasureID, NULL};
+
     fork_exec(args);
 }
 void end_monitor_process(int sig)
@@ -64,7 +69,6 @@ void handle_commands(int sig)
         perror("Error opening treasures file:add_treasure");
         exit(-1);
     }
-
     if (read(fd, command, 10) < 0)
     {
         perror("error reading");
@@ -98,7 +102,7 @@ void handle_commands(int sig)
     {
         printf("Invalid command\n");
     }
-
+    close(pipefd[1]);
     if (close(fd) < 0)
     {
         perror("Error closing file");
@@ -106,11 +110,10 @@ void handle_commands(int sig)
 }
 void monitor_procces()
 {
-
     struct sigaction monitor_actions;
     memset(&monitor_actions, 0x00, sizeof(struct sigaction));
     printf("Monitor procces started\n");
-
+    dup2(pipefd[1], STDOUT_FILENO);
     monitor_actions.sa_handler = handle_commands;
     if (sigaction(SIGUSR1, &monitor_actions, NULL) < 0)
     {
@@ -130,7 +133,6 @@ void monitor_procces()
         pause();
     }
 }
-
 void monitor_ended(int sig)
 {
     int status;
@@ -154,23 +156,49 @@ void monitor_ended(int sig)
                 printf(" with an unknown status.\n");
             }
 
-            // Reset monitor state variables
             monitor_running = 0;
             monitor_stopping = 0;
-            monitor_pid = 0; // Important to reset PID
+            monitor_pid = 0;
         }
     }
 
-    // Check for errors with waitpid itself, though often ignored in simple handlers
     if (ended_pid == -1 && errno != ECHILD)
     {
         perror("waitpid error in monitor_ended");
     }
 }
 
+void read_pipe()
+{
+    char buff[256];
+    ssize_t bytes_read;
+
+    while (1)
+    {
+        bytes_read = read(pipefd[0], buff, sizeof(buff) - 1);
+        if (bytes_read > 0)
+        {
+            buff[bytes_read] = '\0';
+            printf("%s", buff);
+        }
+        else if (bytes_read == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            break;
+        }
+        else if (bytes_read == 0)
+        {
+            break;
+        }
+        else
+        {
+            perror("Error reading from pipe");
+            break;
+        }
+    }
+}
 int main()
 {
-
+    char buff[256];
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
     char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
@@ -215,6 +243,12 @@ int main()
                 }
                 monitor_stopping = 0;
                 monitor_running = 1;
+                if (pipe(pipefd) < 0)
+                {
+                    perror("pipe error");
+                    exit(-1);
+                }
+
                 if ((monitor_pid = fork()) < 0)
                 {
                     perror("Error creating child process\n");
@@ -222,11 +256,15 @@ int main()
                 }
                 if (monitor_pid == 0)
                 {
+                    close(pipefd[0]);
                     monitor_procces();
                     exit(0);
                 }
                 else
                 {
+                    close(pipefd[1]);
+                    if (fcntl(pipefd[0], F_SETFL, O_NONBLOCK) < 0)
+                        exit(2);
                     sleep(1);
                     printf("\n");
                     continue;
@@ -267,6 +305,9 @@ int main()
                     printf("Error sending SIGUSR to child\n");
                     exit(2);
                 }
+                sleep(2);
+                read_pipe();
+
                 sleep(1);
             }
         }
@@ -296,6 +337,8 @@ int main()
                     printf("Error sending SIGUSR1 to child\n");
                     exit(2);
                 }
+                sleep(1);
+                read_pipe();
                 sleep(1);
             }
         }
@@ -341,6 +384,8 @@ int main()
                     exit(2);
                 }
                 sleep(1);
+                read_pipe();
+                sleep(1);
             }
         }
         else if (strcmp(command, "stm") == 0)
@@ -355,14 +400,14 @@ int main()
                 monitor_stopping = 1;
                 if ((stop_pid = fork()) < 0)
                 {
-                    perror("");
+                    perror("fork");
                 }
                 else if (stop_pid == 0)
                 {
                     if (kill(monitor_pid, SIGTERM) < 0)
                     {
                         perror("Error sending SIGTERM to monitor process");
-                        // Exit child with error if kill fails
+
                         exit(2);
                     }
                     exit(0);
@@ -394,7 +439,6 @@ int main()
         }
         else
         {
-
             printf("Invalid command---%s\n", command);
         }
         printf("\n");
