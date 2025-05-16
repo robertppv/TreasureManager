@@ -467,7 +467,7 @@ void remove_hunt(char *huntId)
     {
         if (sprintf(path, "./Game/%s", huntId) < 0)
         {
-            perror("Error making path:list");
+            perror("Error making path");
             exit(-1);
         }
 
@@ -588,7 +588,7 @@ void list_hunts()
 
     struct dirent *dp;
     DIR *d;
-
+    int ok = 0;
     if ((d = opendir("./Game")) == NULL)
     {
         perror("Error opening game directory:list_hunts");
@@ -599,13 +599,17 @@ void list_hunts()
     {
         if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
             continue;
-
+        ok = 1;
         printf("HuntID:%s\nNumber of treasures:%d\n", dp->d_name, number_of_treasures(dp->d_name));
     }
     if (closedir(d) == -1)
     {
         perror("Error closing dir:remove_rec");
         exit(-1);
+    }
+    if (ok == 0)
+    {
+        printf("No hunts\n");
     }
 }
 void view(char *huntId, char *treasureId)

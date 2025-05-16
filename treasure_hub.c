@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <dirent.h>
 int monitor_running = 0;
 int monitor_stopping = 0;
 int pipefd[2];
@@ -54,6 +55,7 @@ void view_treasure(char *huntID, char *treasureID)
 }
 void end_monitor_process(int sig)
 {
+    close(pipefd[1]);
     usleep(5000000);
     exit(EXIT_SUCCESS);
 }
@@ -168,14 +170,14 @@ void monitor_ended(int sig)
     }
 }
 
-void read_pipe()
+void read_pipe(int pipefd)
 {
     char buff[256];
     ssize_t bytes_read;
 
     while (1)
     {
-        bytes_read = read(pipefd[0], buff, sizeof(buff) - 1);
+        bytes_read = read(pipefd, buff, sizeof(buff) - 1);
         if (bytes_read > 0)
         {
             buff[bytes_read] = '\0';
@@ -196,6 +198,71 @@ void read_pipe()
         }
     }
 }
+
+void calculate_score()
+{
+    struct dirent *dp;
+    DIR *d;
+    int pid;
+    int ok = 0;
+
+    if ((d = opendir("./Game")) == NULL)
+    {
+        perror("Error opening game directory:");
+        exit(-1);
+    }
+    char *args[] = {"gcc", "-o", "calculate_score", "./calculate_score.c", NULL};
+    fork_exec(args);
+
+    while ((dp = readdir(d)) != NULL)
+    {
+
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
+            continue;
+
+        int pipec_s[2];
+        if (pipe(pipec_s) < 0)
+        {
+            perror("pipe error");
+            exit(-1);
+        }
+        if ((pid = fork()) < 0)
+        {
+            perror("err");
+            exit(-1);
+        }
+        else if (pid == 0)
+        {
+            close(pipec_s[0]);
+            dup2(pipec_s[1], STDOUT_FILENO);
+
+            char *args2[] = {"./calculate_score", dp->d_name, NULL};
+            fork_exec(args2);
+
+            close(pipec_s[1]);
+            exit(0);
+        }
+        else
+        {
+            close(pipec_s[1]);
+            ok = 1;
+            int status;
+            waitpid(pid, &status, 0);
+            read_pipe(pipec_s[0]);
+        }
+    }
+
+    if (ok == 0)
+    {
+        printf("No hunts\n");
+    }
+
+    if (closedir(d) == -1)
+    {
+        perror("Error closing dir7");
+        exit(-1);
+    }
+}
 int main()
 {
     char buff[256];
@@ -214,7 +281,13 @@ int main()
     {
         printf("Start monitor:sm\nList hunts:lh\nList treasures:lt\nView treasures:vt\nStop monitor:stm\nExit\nSelect a command:");
         char command[100] = "";
-        scanf("%s", command);
+        int res = scanf("%s", command);
+        if (res == EOF)
+        {
+            clearerr(stdin);
+            printf("\n\n");
+            continue;
+        }
         printf("\n");
         if (monitor_stopping == 1)
         {
@@ -305,8 +378,8 @@ int main()
                     printf("Error sending SIGUSR to child\n");
                     exit(2);
                 }
-                sleep(2);
-                read_pipe();
+                sleep(1);
+                read_pipe(pipefd[0]);
 
                 sleep(1);
             }
@@ -338,7 +411,7 @@ int main()
                     exit(2);
                 }
                 sleep(1);
-                read_pipe();
+                read_pipe(pipefd[0]);
                 sleep(1);
             }
         }
@@ -384,7 +457,7 @@ int main()
                     exit(2);
                 }
                 sleep(1);
-                read_pipe();
+                read_pipe(pipefd[0]);
                 sleep(1);
             }
         }
@@ -396,8 +469,10 @@ int main()
             }
             else
             {
+                close(pipefd[0]);
                 int stop_pid;
                 monitor_stopping = 1;
+
                 if ((stop_pid = fork()) < 0)
                 {
                     perror("fork");
@@ -432,6 +507,10 @@ int main()
             {
                 exit(0);
             }
+        }
+        else if (strcmp(command, "cs") == 0)
+        {
+            calculate_score();
         }
         else if (strcmp(command, "") == 0)
         {
