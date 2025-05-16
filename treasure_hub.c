@@ -1,4 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -71,7 +72,7 @@ void handle_commands(int sig)
         perror("Error opening treasures file:add_treasure");
         exit(-1);
     }
-    if (read(fd, command, 10) < 0)
+    if (read(fd, command, 2) < 0)
     {
         perror("error reading");
     }
@@ -265,7 +266,7 @@ void calculate_score()
 }
 int main()
 {
-    char buff[256];
+    
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
     char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
@@ -361,7 +362,7 @@ int main()
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
                 }
-                if (write(fd, "1", 10) < 0)
+                if (write(fd, "1", 2) < 0)
                 {
                     perror("Error writing in file");
                 }
@@ -397,7 +398,7 @@ int main()
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
                 }
-                if (write(fd, "2", 10) < 0)
+                if (write(fd, "2", 2) < 0)
                 {
                     perror("Error writing in file");
                 }
@@ -434,7 +435,7 @@ int main()
                     perror("Error opening treasures file:add_treasure");
                     exit(-1);
                 }
-                if (write(fd, "3", 10) < 0)
+                if (write(fd, "3", 2) < 0)
                 {
                     perror("Error writing in file");
                 }
