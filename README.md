@@ -71,3 +71,7 @@ Choose a command from the interactive interface<br />
 -view treasure<br />
 -stop monitor<br />
 -exit
+
+OS Project Phase 3
+
+-calculate score<br />

@@ -113,7 +113,7 @@ treasure getTreasureInfo()
     }
     if (t.clueText[strlen(t.clueText) - 1] != '\n')
     {
-        printf("Input too long for Clue Text. Maximum length is %d.\n", DEFAULT_LENGTH - 1);
+        printf("Input too long for Clue Text.\n");
         exit(-1);
     }
     t.clueText[strlen(t.clueText) - 1] = '\0';
@@ -228,7 +228,7 @@ void add_treasure(char *huntId)
     {
         if (sprintf(path, "./Game/%s", huntId) < 0)
         {
-            perror("Error making path:remove_treasure");
+            perror("Error making path:add_treasure");
             exit(-1);
         }
         if (mkdir(path, mode) == -1)
@@ -355,6 +355,7 @@ void remove_treasure(char *huntId, char *treasureId)
             if (write(fdw, &t, sizeof(treasure)) < 0)
             {
                 perror("Error writing to treasures file");
+                exit(-1);
             }
             pos++;
         }
@@ -507,7 +508,7 @@ void list(char *huntId)
         perror("Error using stat:list");
         exit(-1);
     }
-    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s", huntId, st.st_size, ctime(&st.st_mtime));
+    printf("Hunt Id:%s\nFile Size:%lld bytes\nLast modification:%s", huntId, st.st_size, ctime(&st.st_mtime));
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
         perror("Error opening treasures file:list");

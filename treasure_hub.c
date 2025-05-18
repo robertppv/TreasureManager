@@ -16,7 +16,7 @@ int monitor_running = 0;
 int monitor_stopping = 0;
 int pipefd[2];
 pid_t monitor_pid;
-mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+mode_t mode = S_IRWXO | S_IRWXG | S_IRWXU;
 #define DEFAULT_LENGTH 32
 
 void fork_exec(char **args)
@@ -79,6 +79,7 @@ void handle_commands(int sig)
         if (read(fd, huntID, DEFAULT_LENGTH) < 0)
         {
             perror("error reading");
+            exit(-1);
         }
 
         list_treasures(huntID);
@@ -88,10 +89,12 @@ void handle_commands(int sig)
         if (read(fd, huntID, DEFAULT_LENGTH) < 0)
         {
             perror("error reading");
+            exit(-1);
         }
         if (read(fd, treasureID, DEFAULT_LENGTH) < 0)
         {
             perror("error reading");
+            exit(-1);
         }
         view_treasure(huntID, treasureID);
     }
@@ -165,6 +168,7 @@ void monitor_ended(int sig)
     if (ended_pid == -1 && errno != ECHILD)
     {
         perror("waitpid error in monitor_ended");
+        exit(-1);
     }
 }
 
@@ -211,7 +215,6 @@ void calculate_score()
     }
     char *args[] = {"gcc", "-o", "calculate_score", "./calculate_score.c", NULL};
     fork_exec(args);
-
     while ((dp = readdir(d)) != NULL)
     {
 
@@ -231,18 +234,30 @@ void calculate_score()
         }
         else if (pid == 0)
         {
-            close(pipec_s[0]);
+            if (close(pipec_s[0]) < 0)
+            {
+                perror("Error closing pipe fd");
+                exit(-1);
+            }
             dup2(pipec_s[1], STDOUT_FILENO);
 
             char *args2[] = {"./calculate_score", dp->d_name, NULL};
             fork_exec(args2);
 
-            close(pipec_s[1]);
+            if (close(pipec_s[1]) < 0)
+            {
+                perror("Error closing pipe fd");
+                exit(-1);
+            }
             exit(0);
         }
         else
         {
-            close(pipec_s[1]);
+            if (close(pipec_s[1]) < 0)
+            {
+                perror("Error closing pipe fd");
+                exit(-1);
+            }
             ok = 1;
             int status;
             waitpid(pid, &status, 0);
@@ -267,6 +282,7 @@ int main()
 
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
+
     char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
     int fd;
     parent_actions.sa_handler = monitor_ended;
@@ -275,10 +291,10 @@ int main()
         perror("Process a SIGCHLD sigaction");
         exit(-1);
     }
-
+    mkdir("Game", mode);
     while (1)
     {
-        printf("start_monitor\nlist_hunts\nlist_treasures\nview_treasures\ncalculate_score\nstop_monitor:stm\nexit\nSelect a command:");
+        printf("start_monitor\nlist_hunts\nlist_treasures\nview_treasure\ncalculate_score\nstop_monitor\nexit\nSelect a command:");
         char command[100] = "";
         int res = scanf("%s", command);
         if (res == EOF)
@@ -413,7 +429,7 @@ int main()
                 sleep(1);
             }
         }
-        else if (strcmp(command, "view_treasures") == 0)
+        else if (strcmp(command, "view_treasure") == 0)
         {
 
             if (monitor_running == 0)
