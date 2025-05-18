@@ -508,7 +508,7 @@ void list(char *huntId)
         perror("Error using stat:list");
         exit(-1);
     }
-    printf("Hunt Id:%s\nFile Size:%lld bytes\nLast modification:%s", huntId, st.st_size, ctime(&st.st_mtime));
+    printf("Hunt Id:%s\nFile Size:%ld bytes\nLast modification:%s", huntId, st.st_size, ctime(&st.st_mtime));
     if ((fd = open(path, O_RDONLY, mode)) < 0)
     {
         perror("Error opening treasures file:list");
