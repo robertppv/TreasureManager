@@ -25,12 +25,13 @@ void fork_exec(char **args)
     if ((exec_pid = fork()) < 0)
     {
         printf("Error creating child process\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (exec_pid == 0)
     {
-
         execvp(args[0], args);
+        perror("execvp failed");
+        exit(EXIT_FAILURE);
     }
     else
     {
@@ -51,38 +52,35 @@ void list_treasures(char *huntID)
 void view_treasure(char *huntID, char *treasureID)
 {
     char *args[] = {"./treasure_manager", "--view", huntID, treasureID, NULL};
-
     fork_exec(args);
 }
 void end_monitor_process(int sig)
 {
-    close(pipefd[1]);
     usleep(5000000);
     exit(EXIT_SUCCESS);
 }
 void handle_commands(int sig)
 {
-    char command[10];
-    char huntID[DEFAULT_LENGTH] = "";
-    char treasureID[DEFAULT_LENGTH] = "";
+    char command[2], huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
     int fd;
 
     if ((fd = open("./commands.txt", O_RDONLY)) < 0)
     {
-        perror("Error opening treasures file:add_treasure");
-        exit(-1);
+        perror("Error opening commands file");
+        exit(EXIT_FAILURE);
     }
     if (read(fd, command, 2) < 0)
     {
         perror("error reading");
+        exit(EXIT_FAILURE);
     }
-
     if (strcmp(command, "1") == 0)
     {
         if (read(fd, huntID, DEFAULT_LENGTH) < 0)
         {
             perror("error reading");
         }
+
         list_treasures(huntID);
     }
     else if (strcmp(command, "3") == 0)
@@ -105,7 +103,6 @@ void handle_commands(int sig)
     {
         printf("Invalid command\n");
     }
-    close(pipefd[1]);
     if (close(fd) < 0)
     {
         perror("Error closing file");
@@ -148,7 +145,7 @@ void monitor_ended(int sig)
             printf("\n\nMonitor process has stopped");
             if (WIFEXITED(status))
             {
-                printf(" with exit code %d.\n", WEXITSTATUS(status));
+                printf(" with exit code %d.", WEXITSTATUS(status));
             }
             else if (WIFSIGNALED(status))
             {
@@ -260,13 +257,14 @@ void calculate_score()
 
     if (closedir(d) == -1)
     {
-        perror("Error closing dir7");
+        perror("Error closing dir");
         exit(-1);
     }
+    sleep(1);
 }
 int main()
 {
-    
+
     struct sigaction parent_actions;
     memset(&parent_actions, 0x00, sizeof(struct sigaction));
     char huntID[DEFAULT_LENGTH] = "", treasureID[DEFAULT_LENGTH] = "";
@@ -280,7 +278,7 @@ int main()
 
     while (1)
     {
-        printf("Start monitor:sm\nList hunts:lh\nList treasures:lt\nView treasures:vt\nStop monitor:stm\nExit\nSelect a command:");
+        printf("start_monitor\nlist_hunts\nlist_treasures\nview_treasures\ncalculate_score\nstop_monitor:stm\nexit\nSelect a command:");
         char command[100] = "";
         int res = scanf("%s", command);
         if (res == EOF)
@@ -295,7 +293,7 @@ int main()
             printf("Monitor procces is currently stopping. Can't accept any commands\n\n");
             continue;
         }
-        if (strcmp(command, "sm") == 0)
+        if (strcmp(command, "start_monitor") == 0)
         {
             if (monitor_running == 1)
             {
@@ -310,7 +308,7 @@ int main()
                     perror("Error creating commands file");
                     exit(-1);
                 }
-                if (close(fd) == -1)
+                if (close(fd) < 0)
                 {
                     perror("Error closing commands file");
                     exit(-1);
@@ -345,11 +343,11 @@ int main()
                 }
             }
         }
-        else if (strcmp(command, "lt") == 0)
+        else if (strcmp(command, "list_treasures") == 0)
         {
             if (monitor_running == 0)
             {
-                printf("Start monitor before executing list_hunt command\n");
+                printf("Start monitor before executing list_treasures command\n");
             }
             else
             {
@@ -359,7 +357,7 @@ int main()
 
                 if ((fd = open("./commands.txt", O_WRONLY | O_TRUNC, mode)) == -1)
                 {
-                    perror("Error opening treasures file:add_treasure");
+                    perror("Error opening commnads file");
                     exit(-1);
                 }
                 if (write(fd, "1", 2) < 0)
@@ -381,11 +379,10 @@ int main()
                 }
                 sleep(1);
                 read_pipe(pipefd[0]);
-
                 sleep(1);
             }
         }
-        else if (strcmp(command, "lh") == 0)
+        else if (strcmp(command, "list_hunts") == 0)
         {
             if (monitor_running == 0)
             {
@@ -416,7 +413,7 @@ int main()
                 sleep(1);
             }
         }
-        else if (strcmp(command, "vt") == 0)
+        else if (strcmp(command, "view_treasures") == 0)
         {
 
             if (monitor_running == 0)
@@ -462,7 +459,7 @@ int main()
                 sleep(1);
             }
         }
-        else if (strcmp(command, "stm") == 0)
+        else if (strcmp(command, "stop_monitor") == 0)
         {
             if (monitor_running == 0)
             {
@@ -470,7 +467,10 @@ int main()
             }
             else
             {
-                close(pipefd[0]);
+                if (close(pipefd[0]) < 0)
+                {
+                    perror("Error closing pipe");
+                }
                 int stop_pid;
                 monitor_stopping = 1;
 
@@ -509,8 +509,9 @@ int main()
                 exit(0);
             }
         }
-        else if (strcmp(command, "cs") == 0)
+        else if (strcmp(command, "calculate_score") == 0)
         {
+
             calculate_score();
         }
         else if (strcmp(command, "") == 0)
@@ -519,7 +520,7 @@ int main()
         }
         else
         {
-            printf("Invalid command---%s\n", command);
+            printf("Invalid command\n");
         }
         printf("\n");
     }

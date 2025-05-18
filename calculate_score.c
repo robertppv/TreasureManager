@@ -45,9 +45,7 @@ void add_to_list(char *user, int value)
 }
 int main(int argc, char **argv)
 {
-    int fd;
-    int res;
-    int ok = 0;
+    int fd, res, ok = 0;
     char path[256] = "";
     treasure t;
     sprintf(path, "./Game/%s/%s_treasures.dat", argv[1], argv[1]);
@@ -55,7 +53,7 @@ int main(int argc, char **argv)
 
     if ((fd = open(path, O_RDONLY)) < 0)
     {
-        perror("err");
+        perror("Error opening treasures file");
         exit(-1);
     }
     while ((res = read(fd, &t, sizeof(treasure))) > 0)
@@ -73,7 +71,10 @@ int main(int argc, char **argv)
         printf("%s = %ld\n", users[i].userName, users[i].sumValue);
     }
 
-    
-    
-    close(fd);
+    if (close(fd) < 0)
+    {
+        perror("Error closing file");
+        exit(-1);
+    }
+    return 0;
 }
